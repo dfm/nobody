@@ -86,8 +86,44 @@ class NBodySystem(object):
         self.vector = x1
         self.vector = 0.5 * (x0 + x1 + h * self.gradient)
 
+
+def polynomial_extrapolate(x, y, tableau):
+    if len(x) == 1:
+        return y[0, :]
+
+    iest = len(x) - 1
+    xest, yest = x[iest], y[iest, :]
+    dy = np.array(yest)
+    yz = np.array(yest)
+    c = np.array(yest)
+
+    for k in range(len(x)):
+        ik = len(x) - k - 2
+        delta = 1.0 / (x[ik] - x[-1])
+        f1 = xest * delta
+        f2 = x[ik] * delta
+
+        q = tableau[k, :]
+        tableau[k, :] = dy
+        delta = c - q
+        dy = f1 * delta
+        c = f2 * delta
+        yz += dy
+
+    tableau[iest, :] = dy
+
+    return yz, dy
+
+
 if __name__ == "__main__":
     import matplotlib.pyplot as pl
+
+    x = np.linspace(1, 2, 10)[::-1]
+    y = np.atleast_2d(x ** 2).T
+    tableau = np.empty([len(x), 1])
+    print(polynomial_extrapolate(x, y, tableau))
+
+    assert 0
 
     s1 = NBodySystem()
     s1.add_particle(1.0, [1.0, 0, 0], [0, 0.5, 0])
