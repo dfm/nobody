@@ -3,3 +3,8 @@ swift
 tutorial
 *.o
 test
+implementations
+*.png
+.DS_Store
+*.txt
+*.pyc
