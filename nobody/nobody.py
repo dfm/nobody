@@ -6,6 +6,7 @@ from __future__ import division, print_function, absolute_import
 __all__ = ["NBodySystem"]
 
 import numpy as np
+from . import extrapolate
 
 
 class NBodySystem(object):
@@ -86,67 +87,25 @@ class NBodySystem(object):
         self.vector = x1
         self.vector = 0.5 * (x0 + x1 + h * self.gradient)
 
+    def bs_step(self, H, eps=1e-8):
+        initial = np.array(self.vector)
+        ks = 2 * np.arange(1, 8 + 1)
+        x = (H / ks) ** 2
+        y = np.empty([len(x)] + list(initial.shape))
+        tableau = np.empty_like(y)
 
-def polynomial_extrapolate(x, y, tableau):
-    if len(x) == 1:
-        return y[0, :]
+        for i, k in enumerate(ks):
+            self.vector = initial
+            self.midpoint_step(H, N=k)
+            y[i] = self.vector
+            yout, yerr = extrapolate.poly_step(i, x, y, tableau)
+            emax = np.max(np.abs(yerr))
+            if emax < eps:
+                break
 
-    iest = len(x) - 1
-    xest, yest = x[iest], y[iest, :]
-    dy = np.array(yest)
-    yz = np.array(yest)
-    c = np.array(yest)
+        if emax > eps:
+            self.vector = initial
+            return self.bs_step(0.5 * H, eps=eps)
 
-    for k in range(len(x)):
-        ik = len(x) - k - 2
-        delta = 1.0 / (x[ik] - x[-1])
-        f1 = xest * delta
-        f2 = x[ik] * delta
-
-        q = tableau[k, :]
-        tableau[k, :] = dy
-        delta = c - q
-        dy = f1 * delta
-        c = f2 * delta
-        yz += dy
-
-    tableau[iest, :] = dy
-
-    return yz, dy
-
-
-if __name__ == "__main__":
-    import matplotlib.pyplot as pl
-
-    x = np.linspace(1, 2, 10)[::-1]
-    y = np.atleast_2d(x ** 2).T
-    tableau = np.empty([len(x), 1])
-    print(polynomial_extrapolate(x, y, tableau))
-
-    assert 0
-
-    s1 = NBodySystem()
-    s1.add_particle(1.0, [1.0, 0, 0], [0, 0.5, 0])
-    s1.add_particle(2.0, [0.0, 0, 0], [0, -0.1, 0])
-
-    s2 = NBodySystem()
-    s2.add_particle(1.0, [1.0, 0, 0], [0, 0.5, 0])
-    s2.add_particle(2.0, [0.0, 0, 0], [0, -0.1, 0])
-
-    dt = 0.001
-    N = 10000
-    pos = np.zeros((N, 2, 3))
-    energy = np.empty(N)
-    for i in range(N):
-        s1.midpoint_step(dt, N=4)
-        pos[i] = s1.positions
-        s2.rk4_step(dt)
-        print(np.sum((pos[i] - s2.positions) ** 2))
-        energy[i] = s1.energy
-    pl.plot(pos[:, 0, 0], pos[:, 0, 1])
-    pl.plot(pos[:, 1, 0], pos[:, 1, 1])
-    pl.savefig("euler.png")
-
-    pl.figure()
-    pl.plot(energy)
-    pl.savefig("energy.png")
+        self.vector = yout
+        return H

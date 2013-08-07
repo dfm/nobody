@@ -8,3 +8,5 @@ implementations
 .DS_Store
 *.txt
 *.pyc
+bs
+*.out
