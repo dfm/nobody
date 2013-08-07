@@ -152,11 +152,12 @@ double bs_step (int n, double t, double *x, double H, double eps,
     free(tableau);
 
     if (maxerr > eps) {
-        if (0.5 * H > 0.0) {
+        t = bs_step(n, t0, x, 0.5 * H, eps, xfinal, dxdt);
+        if (t > t0) {
             free(xout);
-            return bs_step(n, t0, x, 0.5 * H, eps, xfinal, dxdt);
+            return t;
         }
-        fprintf(stderr, "Underflow encountered in BS step size.");
+        fprintf(stderr, "Underflow encountered in BS step size.\n");
     }
 
     for (i = 0; i < n; ++i) xfinal[i] = xout[i];
