@@ -1,5 +1,7 @@
-.c.o:
-	cc -o $*.o -c $*.c
+CFLAGS = -Inobody
 
-test: src/algorithms.o src/test.c
-	cc -o test src/algorithms.o src/test.c
+.c.o:
+	cc $(CFLAGS) -o $*.o -c $*.c
+
+test: nobody/test.o nobody/nobody.o nobody/kepler.o
+	cc $(CFLAGS) -o test nobody/nobody.o nobody/kepler.o nobody/test.o

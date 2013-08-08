@@ -1,7 +1,9 @@
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include "nobody.h"
 
+//
+// The maximum number of midpoint iterations to try. The number of divisions
+// in the last attempt will actually try ``2 * KMAX`` midpoints.
+//
 #define KMAX 8
 
 //
@@ -23,7 +25,7 @@ void nobody_setup (int n, double *m)
     int i;
     nparticles = n;
     masses = malloc(n * sizeof(double));
-    for (i = 0; i < n; ++i) masses[i] = m[i];
+    for (i = 0; i < n; ++i) masses[i] = G_GRAV * m[i];
 }
 
 //
@@ -289,23 +291,3 @@ double nobody_bs (int n, double t, double *x, double H, double eps,
     // Return the final time of the system.
     return t;
 }
-
-// int main ()
-// {
-//     int i, j, k;
-//     double m[2]  = {1.0, 2.0},
-//            x[12] = {1.0, 0.0, 0.0, 0.0,  0.5, 0.0,
-//                     0.0, 0.0, 0.0, 0.0, -0.1, 0.0},
-//            g[12], h = 0.5, t = 0.0;
-//
-//     nobody_setup(2, m);
-//
-//     for (k = 0; k < 1000; ++k) {
-//         t = nobody_bs (12, t, x, h, 1e-9, x, &nobody_gradient);
-//         printf("%e ", t);
-//         for (i = 0; i < 12; ++i) printf("%e ", x[i]);
-//         printf("\n");
-//     }
-//
-//     return 0;
-// }
