@@ -15,9 +15,12 @@
 //
 double kepler_ecc_to_mean_anomaly (double psi, double e);
 double kepler_mean_to_ecc_anomaly (double M, double e, int *info);
-int kepler_solve_one (int n, double *t, double *coords, double mstar,
-                      double mplanet, double e, double a, double t0,
-                      double pomega, double ix, double iy);
+int kepler_solve_one (int n, double *t, double mstar, double mplanet,
+                      double e, double a, double t0, double pomega, double ix,
+                      double iy, double *coords);
+int kepler_solve (int n, double *t, double mstar, int np, double *m,
+                  double *e, double *a, double *t0, double *pomega,
+                  double *ix, double *iy, double *coords);
 
 //
 // Tools for solving a full N-body gravitational system.

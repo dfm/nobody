@@ -79,13 +79,6 @@ double kepler_mean_to_ecc_anomaly (double M, double e, int *info)
 //
 // :param int n:              The number of time steps to solve.
 // :param double t[n]:        The times where the orbit should be computed.
-// :param double coords[6*n]: The phase space coordinates of the planet at
-//                            each time ``t``. The coordinate system is such
-//                            that the first element points towards the
-//                            observer and the other two are in the plane of
-//                            the sky (as defined by ``iy``). The positions
-//                            are measured in Solar radii and the velocities
-//                            in Solar radii per day.
 // :param double mstar:       The mass of the star in Solar masses.
 // :param double mplanet:     The mass of the planet in Solar masses.
 // :param double e:           The eccentricity of the orbit.
@@ -101,14 +94,21 @@ double kepler_mean_to_ecc_anomaly (double M, double e, int *info)
 //                            face on.
 // :param double iy:          The orientation of the orbit in the plane of the
 //                            sky measured in radians.
+// :param double coords[6*n]: The phase space coordinates of the planet at
+//                            each time ``t``. The coordinate system is such
+//                            that the first element points towards the
+//                            observer and the other two are in the plane of
+//                            the sky (as defined by ``iy``). The positions
+//                            are measured in Solar radii and the velocities
+//                            in Solar radii per day.
 //
 // :returns int info:         A flag describing the success of the computation.
 //                            0=success, 1=solve did not converge after 500
 //                            iterations, 2=unphysical eccentricity.
 //
-int kepler_solve_one (int n, double *t, double *coords, double mstar,
-                      double mplanet, double e, double a, double t0,
-                      double pomega, double ix, double iy)
+int kepler_solve_one (int n, double *t, double mstar, double mplanet,
+                      double e, double a, double t0, double pomega, double ix,
+                      double iy, double *coords)
 {
     int i, info = 0;
     double period = 2 * M_PI * sqrt(a * a * a / G_GRAV / (mstar + mplanet)),
@@ -162,5 +162,79 @@ int kepler_solve_one (int n, double *t, double *coords, double mstar,
         coords[6*i+5] = 0.0;
     }
 
+    return info;
+}
+
+//
+// Solve Kepler's equation for the orbits of a system of planets.
+//
+// :param int n:             The number of time steps to solve.
+// :param double t[n]:       The times where the orbit should be computed.
+// :param double mstar:      The mass of the star in Solar masses.
+// :param int np:            The number of planets in the system.
+// :param double m[np]:      The masses of the planets in Solar masses.
+// :param double e[np]:      The eccentricities of the orbits.
+// :param double a[np]:      The semi-major axis of the orbit in Solar radii.
+// :param double t0[np]:     The epochs of the orbits (defined as the center
+//                           time of a target transit) in days.
+// :param double pomega[np]: The orientations of the orbital ellipses. Defined
+//                           as the angle between the major-axis of the
+//                           ellipse and the observer in radians.
+// :param double ix[np]:     The inclinations of the orbits relative to the
+//                           observer in radians. At ``ix=0``, the system is
+//                           edge on and at ``ix=0.5*M_PI``, the system is
+//                           face on.
+// :param double iy[np]:     The orientations of the orbits in the plane of
+//                           the sky measured in radians.
+// :param double coords[6*(np+1)*n]:
+//                        The phase space coordinates of the star and the
+//                        planets at each time ``t``. The coordinate system
+//                        is such that the first element points towards the
+//                        observer and the other two are in the plane of
+//                        the sky (as defined by ``iy``). The positions
+//                        are measured in Solar radii and the velocities
+//                        in Solar radii per day.
+//
+// :returns int info:     A flag describing the success of the computation.
+//                        0=success, 1=solve did not converge after 500
+//                        iterations, 2=unphysical eccentricity.
+//
+int kepler_solve (int n, double *t, double mstar, int np, double *m,
+                  double *e, double *a, double *t0, double *pomega,
+                  double *ix, double *iy, double *coords)
+{
+    int i, j, k, offset, ind, info = 0;
+    double *tmp = malloc(6 * n * sizeof(double));
+
+    // Initialize the star's coordinates;
+    offset = 6 * (np + 1);
+    for (i = 0; i < n; ++i)
+        for (j = 0; j < 6; ++j)
+            coords[offset*i+j] = 0.0;
+
+    // Loop over the planets and solve.
+    for (k = 0; k < np; ++k) {
+        // Solve the system for one planet.
+        info = kepler_solve_one (n, t, mstar, m[k], e[k], a[k], t0[k],
+                                 pomega[k], ix[k], iy[k], tmp);
+        if (info != 0) {
+            free(tmp);
+            return info;
+        }
+
+        // Copy over the results.
+        ind = 6 * (k + 1);
+        for (i = 0; i < n; ++i) {
+            // Save the planet's coordinates.
+            for (j = 0; j < 6; ++j)
+                coords[offset*i+6*(k+1)+j] = tmp[6*i+j];
+
+            // Update the stellar velocity.
+            for (j = 3; j < 6; ++j)
+                coords[offset*i+j] -= m[k] * tmp[6*i+j] / mstar;
+        }
+    }
+
+    free(tmp);
     return info;
 }
