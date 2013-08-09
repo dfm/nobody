@@ -23,6 +23,17 @@ int kepler_solve (int n, double *t, double mstar, int np, double *m,
                   double *ix, double *iy, double *coords);
 
 //
+// Tools for solving a variational Kepler system.
+//
+int variational_solve (int n, double *t, double mstar, int np,
+                       double *m, double *e, double *a, double *t0,
+                       double *pomega, double *ix, double *iy,
+                       int nkick, double *kicks,
+                       double *del_e, double *del_a, double *del_t0,
+                       double *del_pomega, double *del_ix, double *del_iy,
+                       double *coords);
+
+//
 // Tools for solving a full N-body gravitational system.
 //
 void nobody_setup (int n, double *m);
