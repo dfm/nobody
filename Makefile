@@ -1,9 +1,14 @@
-.c.o:
-	cc -o $*.o -c $*.c
+SRC        = src
+TEST_FILES = $(SRC)/test.o $(SRC)/nobody.o $(SRC)/kepler.o \
+			 $(SRC)/variational.o
+CFLAGS     = -Iinclude
 
-test: test.o nobody.o kepler.o variational.o
-	cc $(CFLAGS) -o test nobody/nobody.o nobody/kepler.o nobody/variational.o\
-		nobody/test.o
+.c.o:
+	cc $(CFLAGS) -o $*.o -c $*.c
+
+test: $(TEST_FILES)
+	cc $(CFLAGS) -o test $(TEST_FILES)
+	./test
 
 clean:
-	rm -rf *.o test
+	rm -rf $(TEST_FILES) test
