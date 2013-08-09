@@ -1,8 +1,9 @@
-CFLAGS = -Inobody
-
 .c.o:
-	cc $(CFLAGS) -o $*.o -c $*.c
+	cc -o $*.o -c $*.c
 
-test: nobody/test.o nobody/nobody.o nobody/kepler.o nobody/variational.o
+test: test.o nobody.o kepler.o variational.o
 	cc $(CFLAGS) -o test nobody/nobody.o nobody/kepler.o nobody/variational.o\
 		nobody/test.o
+
+clean:
+	rm -rf *.o test
