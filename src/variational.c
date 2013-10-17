@@ -1,4 +1,4 @@
-#include "nobody.h"
+#include "nbody.h"
 
 //
 // Solve Kepler's equation for the orbits of a system of planets.
@@ -9,11 +9,11 @@
 // :param double mstar:      The mass of the star in Solar masses.
 // :param int np:            The number of planets in the system.
 // :param double m[np]:      The masses of the planets in Solar masses.
-// :param double e[np]:      The eccentricities of the mean orbits.
 // :param double a[np]:      The semi-major axis of the mean orbits in Solar
 //                           radii.
 // :param double t0[np]:     The epochs of the mean orbits (defined as the
 //                           center time of a target transit) in days.
+// :param double e[np]:      The eccentricities of the mean orbits.
 // :param double pomega[np]: The orientations of the mean orbital ellipses.
 //                           Defined as the angle between the major-axis of
 //                           the ellipse and the observer in radians.
@@ -27,15 +27,15 @@
 // :param double kicks[nkick]:
 //                           The times of the kicks in days. This array is
 //                           assumed to be sorted.
-// :param double del_e[(nkick+1)*np]:
-//                           The change in the eccentricities of the orbits
-//                           after each kick.
 // :param double del_a[(nkick+1)*np]:
 //                           The change in the semi-major axes of the orbits
 //                           after each kick.
 // :param double del_t0[(nkick+1)*np]:
 //                           The change in the epochs of the orbits after each
 //                           kick.
+// :param double del_e[(nkick+1)*np]:
+//                           The change in the eccentricities of the orbits
+//                           after each kick.
 // :param double del_pomega[(nkick+1)*np]:
 //                           The change in the angle of the orbital ellipses
 //                           after each kick.
@@ -59,10 +59,10 @@
 //                           iterations, 2=unphysical eccentricity.
 //
 int variational_solve (int n, double *t, double mstar, int np,
-                       double *m, double *e, double *a, double *t0,
+                       double *m, double *a, double *t0, double *e,
                        double *pomega, double *ix, double *iy,
                        int nkick, double *kicks,
-                       double *del_e, double *del_a, double *del_t0,
+                       double *del_a, double *del_t0, double *del_e,
                        double *del_pomega, double *del_ix, double *del_iy,
                        double *coords)
 {
@@ -92,7 +92,7 @@ int variational_solve (int n, double *t, double mstar, int np,
         }
 
         // Solve the system using the Kepler solver.
-        info = kepler_solve (count, ttmp, mstar, np, m, e, a, t0, pomega,
+        info = kepler_solve (count, ttmp, mstar, np, m, a, t0, e, pomega,
                              ix, iy, coords + (np+1)*6*start);
 
         // Set the orbital parameters back to their previous values.

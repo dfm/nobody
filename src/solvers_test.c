@@ -1,4 +1,4 @@
-#include "nobody.h"
+#include "nbody.h"
 
 #define EQ_TOL        1e-4
 #define N_TIME_KEPLER 5000
@@ -54,41 +54,57 @@ void test_solver (int *total, int *passed)
     ++(*total);
 }
 
-void test_velocities (int *total, int *passed)
+void test_one_velocity (int *total, int *passed, double time,
+                        double e, double pomega, double t0, double ix,
+                        double iy)
 {
     int i, j, info;
     double eps = 1e-4,
-           t[3] = {0.0, eps, 2 * eps},
+           t[3] = {time-eps, time, time+eps},
            coords[18],
            mstar = 1.0,
            mplanet = 1.0e-5,
-           e = 0.0, a = 150.0, t0 = 0.0, pomega = 0.5, ix = 0.1, iy = 0.1,
+           a = 150.0,
            numerical, analytic, delta;
 
-    info = kepler_solve_one (3, t, mstar, mplanet, e, a, t0, pomega,
+    info = kepler_solve_one (3, t, mstar, mplanet, a, t0, e, pomega,
                              ix, iy, coords);
+    if (info != 0) return;
 
     for (i = 0; i < 3; ++i) {
-        numerical = 0.5 * (coords[6*2+i] - coords[i]) / eps;
+        numerical = 0.5 * (coords[12+i] - coords[i]) / eps;
         analytic  = coords[9+i];
-        delta = (numerical - analytic) / numerical;
+        delta = numerical - analytic;
         delta *= delta;
         delta = sqrt(delta);
 
         if (delta <= EQ_TOL) ++(*passed);
-        else fprintf(stderr,
-                     "Relative error in velocity %d is not acceptable (%e).\n",
+        else {fprintf(stderr,
+                     "Error in velocity %d too large (%e).\n",
                      i, delta);
+            printf("pomega = %e, %e %e\n", pomega, numerical, analytic);
+        }
 
         ++(*total);
     }
 }
 
+void test_velocities (int *total, int *passed)
+{
+    double e, pomega, t, t0, ix, iy;
+    for (e = 0.0; e < 1.0; e += 0.1)
+    for (pomega = -6.0; pomega < 6.0; pomega += 2.0)
+    for (t0 = -10.0; t0 < 10.0; t0 += 2.0)
+    for (t = 0.0; t < 1000.0; t += 50.0)
+    for (ix = -6.0; ix < 6.0; ix += 2.0)
+    for (iy = -6.0; iy < 6.0; iy += 2.0)
+        test_one_velocity(total, passed, t, e, pomega, t0, ix, iy);
+}
+
 void test_nbody (int *total, int *passed)
 {
     int i, j, k, info;
-    double eps = 1e-4,
-           t[3] = {0.0, eps, 2 * eps},
+    double t[1] = {0.0},
            coords[18],
            tmp[12],
            mstar = 1.0,
@@ -102,47 +118,40 @@ void test_nbody (int *total, int *passed)
 
     int N = 1000;
     double initial[12], masses[2] = {mstar, mplanet[0]},
-           time = t[1], dt = 0.5, diff, maxdiff;
+           time = t[0], dt = 0.5, diff, maxdiff;
 
     ++(*total);
 
     // Set up N-body initial conditions.
-    nobody_setup(2, masses);
-    info = kepler_solve_one (3, t, mstar, mplanet[0], e[0], a[0], t0[0],
+    nbody_setup(2, masses);
+    info = kepler_solve_one (1, t, mstar, mplanet[0], a[0], t0[0], e[0],
                              pomega[0], ix[0], iy[0], coords);
 
-    for (i = 0; i < 3; ++i) {
-        // Planet position.
-        initial[6+i] = coords[6+i];
-
-        // Planet velocity.
-        initial[9+i] = 0.5 * (coords[6*2+i] - coords[i]) / eps;
-
-        // Star coordinates.
+    for (i = 0; i < 6; ++i) {
         initial[i] = 0.0;
-        initial[3+i] = 0.0;
+        initial[6+i] = coords[i];
     }
 
     // Loop over time steps.
     for (k = 0; k < N; ++k) {
         // Advance the time using the N-body simulation.
-        time = nobody_bs (12, time, initial, dt, 1e-12, initial,
-                          &nobody_gradient);
+        time = nbody_bs (12, time, initial, dt, 1e-12, initial,
+                          &nbody_gradient, &info);
 
         // Solve the Kepler version of the problem.
         t[0] = time;
-        kepler_solve (1, t, mstar, 1, mplanet, e, a, t0, pomega, ix, iy, tmp);
+        kepler_solve (1, t, mstar, 1, mplanet, a, t0, e, pomega, ix, iy, tmp);
 
         // Compute the differences.
         maxdiff = 0.0;
-        for (i = 0; i < 3; ++i) {
+        for (i = 0; i < 6; ++i) {
             diff = tmp[6+i] - (initial[6+i] - initial[i]);
             diff = sqrt(diff * diff);
             if (diff > maxdiff) maxdiff = diff;
         }
 
         // Check for equality.
-        if (maxdiff >= 500 * EQ_TOL) {
+        if (maxdiff >= EQ_TOL) {
             fprintf(stderr, "Orbit position off by too much at t=%e\n",
                     time);
             fprintf(stderr, "%e\n", maxdiff);
@@ -182,16 +191,16 @@ void test_variational (int *total, int *passed)
         t[k] = k * 200.0 / N_TIME_KEPLER;
 
     // Solve the pure Kepler system.
-    info = kepler_solve (N_TIME_KEPLER, t, mstar, 1, mplanet, e, a, t0,
+    info = kepler_solve (N_TIME_KEPLER, t, mstar, 1, mplanet, a, t0, e,
                          pomega, ix, iy, coords_base);
     if (info != 0) {
         fprintf(stderr, "Base Kepler solve failed in variational test.\n");
         return;
     }
 
-    info = variational_solve (N_TIME_KEPLER, t, mstar, 1, mplanet, e, a, t0,
-                              pomega, ix, iy,
-                              nkick, kicks, del_e, del_a, del_t0,
+    info = variational_solve (N_TIME_KEPLER, t, mstar, 1, mplanet, a, t0,
+                              e, pomega, ix, iy,
+                              nkick, kicks, del_a, del_t0, del_e,
                               del_pomega, del_ix, del_iy, coords_var);
     if (info != 0) {
         fprintf(stderr, "Variational Kepler solve failed.\n");
